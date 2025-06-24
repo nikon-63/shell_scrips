@@ -1,0 +1,6 @@
+# Basic gitignore
+.DS_Store
+.env
+
+# NetCheck ignores
+NetCheck/netcheck.log
