@@ -4,3 +4,6 @@
 
 # NetCheck ignores
 NetCheck/netcheck.log
+
+# Radius ignores
+Radius/output.log
