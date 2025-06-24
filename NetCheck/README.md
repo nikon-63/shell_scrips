@@ -27,4 +27,10 @@ To run the logger every 5 minutes:
 */5 * * * * /home/ubuntu/netcheck/netcheck_log.sh 2>&1
 ```
 
+## Running on RPI
 
+Dig is not installed by default on Raspbian. Install it with:
+
+```bash
+sudo apt-get install dnsutils
+```
