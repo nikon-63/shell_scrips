@@ -47,6 +47,28 @@ EOF
     exit 0
 fi
 
+# Uninstall mode
+if [ "$1" == "--uninstall" ]; then
+    # Remove mapping file
+    if [ -f "$MAPPING_FILE" ]; then
+        rm "$MAPPING_FILE"
+        echo "Removed mapping file: $MAPPING_FILE"
+    else
+        echo "Mapping file not found: $MAPPING_FILE"
+    fi
+
+    # Remove autocomplete function from .zshrc
+    if grep -q "_vscode_autocomplete" "$ZSHRC_FILE"; then
+        sed -i '' '/_vscode_autocomplete/,/EOF/d' "$ZSHRC_FILE"
+        echo "Removed autocomplete function from $ZSHRC_FILE"
+    else
+        echo "Autocomplete function not found in $ZSHRC_FILE"
+    fi
+
+    echo "Uninstallation complete."
+    exit 0
+fi
+
 # Ensure mapping file exists
 if [ ! -f "$MAPPING_FILE" ]; then
     echo "Mapping file not found: $MAPPING_FILE"
