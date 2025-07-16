@@ -1,16 +1,25 @@
 #!/bin/bash
 
 MAPPING_FILE="$HOME/.vscode_projects.json"
-GITHUB_DIR="$HOME/GitHub"
 ZSHRC_FILE="$HOME/.zshrc"
 
 
 # Install mode
 if [ "$1" == "--install" ]; then
-    # Makinf mapping file if it doesn't exist
+    # Create mapping file if it doesn't exist
     if [ ! -f "$MAPPING_FILE" ]; then
         echo "{}" > "$MAPPING_FILE"
         echo "Created mapping file: $MAPPING_FILE"
+    fi
+
+    echo "Enter the initial GitHub root directory (e.g., $HOME/GitHub):"
+    read -r GITHUB_DIR
+    if [ -d "$GITHUB_DIR" ]; then
+        tmp=$(mktemp)
+        jq --arg key "github_root" --arg val "$GITHUB_DIR" '. + {($key): $val}' "$MAPPING_FILE" > "$tmp" && mv "$tmp" "$MAPPING_FILE"
+    else
+        echo "Invalid directory: $GITHUB_DIR"
+        exit 1
     fi
 
     # Add autocomplete function to .zshrc if not already present
@@ -38,8 +47,20 @@ EOF
     exit 0
 fi
 
+# Ensure mapping file exists
+if [ ! -f "$MAPPING_FILE" ]; then
+    echo "Mapping file not found: $MAPPING_FILE"
+    exit 1
+fi
+
 # Sync mode: update mapping with any new folders
 if [ "$1" == "--sync" ]; then
+    GITHUB_DIR=$(jq -r '.github_root' "$MAPPING_FILE")
+    if [ "$GITHUB_DIR" == "null" ]; then
+        echo "GitHub root directory not found in $MAPPING_FILE. Please run '--install' first."
+        exit 1
+    fi
+
     echo "Syncing projects in $GITHUB_DIR..."
     for dir in "$GITHUB_DIR"/*/; do
         [ -d "$dir" ] || continue
@@ -60,11 +81,6 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-# Ensure mapping file exists
-if [ ! -f "$MAPPING_FILE" ]; then
-    echo "Mapping file not found: $MAPPING_FILE"
-    exit 1
-fi
 
 # Launch project
 PROJECT_ALIAS="$1"
