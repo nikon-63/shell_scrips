@@ -1,4 +1,4 @@
-# SSS
+# SSS - Secure SSH Simple
 
 A simple Bash script to manage and connect to SSH servers using aliases.
 
