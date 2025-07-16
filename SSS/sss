@@ -1,0 +1,154 @@
+#!/bin/bash
+
+MAPPING_FILE="$HOME/.sss_mapping.json"
+ZSHRC_FILE="$HOME/.zshrc"
+
+
+# Install mode
+# Makes the mapping file and adds autocomplete function to .zshrc
+if [ "$1" == "--install" ]; then
+    if [ ! -f "$MAPPING_FILE" ]; then
+        echo "{}" > "$MAPPING_FILE"
+        echo "Created mapping file: $MAPPING_FILE"
+    fi
+
+    # Add autocomplete function to .zshrc if not already present
+    if ! grep -q "_sss_autocomplete" "$ZSHRC_FILE"; then
+        cat << 'EOF' >> "$ZSHRC_FILE"
+
+# SSS autocomplete
+_sss_autocomplete() {
+    local cur=${words[2]} # mapping alias being typed
+    local mappings="$HOME/.sss_mapping.json"
+
+    if [[ -f "$mappings" ]]; then
+        reply=($(jq -r 'keys[]' "$mappings" | grep -E "^$cur"))
+    fi
+}
+
+compctl -K _sss_autocomplete sss
+EOF
+        echo "Added autocomplete function to $ZSHRC_FILE"
+    else
+        echo "Autocomplete function already exists in $ZSHRC_FILE"
+    fi
+    exit 0
+fi
+
+# Uninstall mode
+# Removes the mapping file and the autocomplete function from .zshrc
+if [ "$1" == "--uninstall" ]; then
+    # Remove mapping file
+    if [ -f "$MAPPING_FILE" ]; then
+        rm "$MAPPING_FILE"
+        echo "Removed mapping file: $MAPPING_FILE"
+    else
+        echo "Mapping file not found: $MAPPING_FILE"
+    fi
+
+    # Remove autocomplete function from .zshrc
+    if grep -q "_sss_autocomplete" "$ZSHRC_FILE"; then
+        sed -i '' '/_sss_autocomplete/,/compctl -K _sss_autocomplete sss/d' "$ZSHRC_FILE"
+        echo "Removed autocomplete function from $ZSHRC_FILE"
+    else
+        echo "Autocomplete function not found in $ZSHRC_FILE"
+    fi
+    exit 0
+fi
+
+# Add new SSH host
+if [ "$1" == "--add" ]; then
+    echo "Enter the SSH host alias:"
+    read -r HOST_ALIAS
+
+    # Check if alias already exists
+    if jq -e --arg alias "$HOST_ALIAS" '.[$alias] // empty' "$MAPPING_FILE" > /dev/null; then
+        echo "Error: Alias '$HOST_ALIAS' already exists in the mapping file."
+        exit 1
+    fi
+
+    echo "Enter the SSH host address (e.g., user@hostname):"
+    read -r HOST_ADDRESS
+
+    jq --arg alias "$HOST_ALIAS" --arg address "$HOST_ADDRESS" '. + {($alias): $address}' "$MAPPING_FILE" > "$MAPPING_FILE.tmp" && mv "$MAPPING_FILE.tmp" "$MAPPING_FILE"
+    echo "Added new SSH host: $HOST_ALIAS -> $HOST_ADDRESS"
+    exit 0
+fi
+
+# Remove SSH host
+if [ "$1" == "--remove" ]; then
+    echo "Enter the SSH host alias to remove:"
+    read -r HOST_ALIAS
+
+    jq "del(.\"$HOST_ALIAS\")" "$MAPPING_FILE" > "$MAPPING_FILE.tmp" && mv "$MAPPING_FILE.tmp" "$MAPPING_FILE"
+    echo "Removed SSH host: $HOST_ALIAS"
+    exit 0
+fi
+
+# List all SSH mappings
+if [ "$1" == "--list" ]; then
+    jq -r 'to_entries | .[] | "\(.key) -> \(.value)"' "$MAPPING_FILE"
+    exit 0
+fi
+
+# Direct SSH connection using alias 
+if [ -n "$1" ] && [ "$1" != "--install" ] && [ "$1" != "--add" ] && [ "$1" != "--remove" ] && [ "$1" != "--list" ] && [ "$1" != "--uninstall" ]; then
+    if [ ! -f "$MAPPING_FILE" ]; then
+        echo "Error: Mapping file not found. Please run the script with --install to create it."
+        exit 1
+    fi
+
+    SSH_ADDRESS=$(jq -r --arg alias "$1" '.[$alias] // empty' "$MAPPING_FILE")
+    if [ -n "$SSH_ADDRESS" ]; then
+        echo "Connecting to $SSH_ADDRESS..."
+        ssh "$SSH_ADDRESS"
+    else
+        echo "Error: Alias '$1' not found in the mapping file."
+        exit 1
+    fi
+    exit 0
+fi
+
+# Default behavior: list mappings with numbers and allow selection
+if [ -z "$1" ]; then
+    if [ ! -f "$MAPPING_FILE" ]; then
+        echo "Error: Mapping file not found. Please run the script with --install to create it."
+        exit 1
+    fi
+
+    if [ ! -s "$MAPPING_FILE" ]; then
+        echo "Error: Mapping file is empty. Please add mappings using --add."
+        exit 1
+    fi
+
+    echo "Available SSH mappings:"
+    MAPPINGS=$(jq -r 'to_entries | .[] | "\(.key) -> \(.value)"' "$MAPPING_FILE")
+    COUNTER=1
+    MAPPING_KEYS=()
+    MAPPING_VALUES=()
+    while IFS= read -r LINE; do
+        if [ -n "$LINE" ]; then
+            echo "$COUNTER) $LINE"
+            MAPPING_KEYS+=("$(echo "$LINE" | awk -F' -> ' '{print $1}')")
+            MAPPING_VALUES+=("$(echo "$LINE" | awk -F' -> ' '{print $2}')")
+            COUNTER=$((COUNTER + 1))
+        fi
+    done <<< "$MAPPINGS"
+
+    if [ "$COUNTER" -eq 1 ]; then
+        echo "Error: No mappings found in the file."
+        exit 1
+    fi
+
+    echo "Enter the number of the SSH mapping to connect:"
+    read -r SELECTION
+
+    if [[ "$SELECTION" -ge 1 && "$SELECTION" -lt "$COUNTER" ]]; then
+        SSH_ADDRESS="${MAPPING_VALUES[$((SELECTION - 1))]}"
+        echo "Connecting to $SSH_ADDRESS..."
+        ssh "$SSH_ADDRESS"
+    else
+        echo "Invalid selection."
+    fi
+    exit 0
+fi
