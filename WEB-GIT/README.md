@@ -7,7 +7,7 @@ A simple Bash script to open github repos on github.com projects using aliases.
 - **Install (`--install`)**: Sets up the script by creating the mapping file (`.vscode_projects.json`) and adding an autocomplete function to your `.zshrc`. During installation, you'll be prompted to specify the initial GitHub root directory where your project folders are located.
 - **Uninstall (`--uninstall`)**: Removes the mapping file and the autocomplete function from `.zshrc`.
 - **Sync (`--sync`)**: Scans the specified GitHub root directory and updates the mapping file with any new project folders.
-- **Open Projects**: Quickly open a project in Visual Studio Code using its alias.
+- **Open Projects**: Quickly open a project on GitHub in your default browser using its alias. The URL is read from the repository’s `.git/config` (remote.origin.url), with error handling if missing.
 
 ## Usage
 
