@@ -36,11 +36,17 @@ _vscode_autocomplete() {
     fi
 }
 
-compctl -K _vscode_autocomplete vs
+compctl -K _vscode_autocomplete web-git
 EOF
         echo "Added autocomplete function to $ZSHRC_FILE"
     else
         echo "Autocomplete function already exists in $ZSHRC_FILE"
+    fi
+
+    # Ensure binding for the new command name exists even if the function was already present
+    if ! grep -q 'compctl -K _vscode_autocomplete web_git' "$ZSHRC_FILE"; then
+        echo 'compctl -K _vscode_autocomplete web_git' >> "$ZSHRC_FILE"
+        echo "Added autocomplete binding for web_git to $ZSHRC_FILE"
     fi
 
     echo "Installation complete."
@@ -99,7 +105,7 @@ fi
 
 # Help/usage
 if [ -z "$1" ]; then
-    echo "Usage: vs <project_alias> | vs --sync"
+    echo "Usage: web-git <project_alias> | web-git --sync"
     exit 1
 fi
 
