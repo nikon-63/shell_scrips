@@ -1,0 +1,16 @@
+#!/bin/bash
+
+CURRENT_DIR="$(pwd)"
+
+
+if [ ! -d "$CURRENT_DIR/.git" ]; then
+    echo "Not a git repository: $CURRENT_DIR"
+    exit 1
+fi
+
+if ! open -a "GitHub Desktop" "$CURRENT_DIR" &>/dev/null; then
+    echo "Could not open GitHub Desktop."
+    exit 1
+fi
+
+echo "Opened $(basename "$CURRENT_DIR") in GitHub Desktop"
