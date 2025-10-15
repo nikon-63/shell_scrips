@@ -105,7 +105,7 @@ fi
 
 # Help/usage
 if [ -z "$1" ]; then
-    echo "Usage: web-git <project_alias> | web-git --sync"
+    echo "Usage: web-git <project_alias> | web-git . | web-git --sync"
     exit 1
 fi
 
