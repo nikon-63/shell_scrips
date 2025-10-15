@@ -1,0 +1,115 @@
+#!/bin/bash
+
+set -euo pipefail
+
+BAUD="${1:-9600}"
+TOOL="${2:-screen}"
+
+DEVICES=()
+for d in /dev/cu.usb* /dev/tty.usb*; do
+  [ -e "$d" ] || continue
+  DEVICES+=("$d")
+done
+
+if [ "${#DEVICES[@]}" -eq 0 ]; then
+  echo "[!] No USB serial devices found under /dev/cu.usb* or /dev/tty.usb*"
+  echo "    Tip: unplug/replug the adapter, or run: ls -ltr /dev/*usb*"
+  exit 1
+fi
+
+if [ "${#DEVICES[@]}" -gt 1 ]; then
+  echo "[*] Multiple serial devices found:"
+  i=1
+  for dev in "${DEVICES[@]}"; do
+    echo "  [$i] $dev"
+    i=$((i+1))
+  done
+  printf "Select a device [1-%d]: " "${#DEVICES[@]}"
+  read -r choice
+  case "$choice" in
+    ''|*[!0-9]*) echo "[!] Invalid selection"; exit 1;;
+    *) idx=$((choice-1));;
+  esac
+  DEVICE="${DEVICES[$idx]}"
+else
+  DEVICE="${DEVICES[0]}"
+fi
+
+echo "[*] Using device: $DEVICE"
+echo "[*] Baud rate:    $BAUD"
+echo "[*] Tool:         $TOOL"
+
+# Show holders and offer to kill them
+if command -v lsof >/dev/null 2>&1; then
+  HOLDERS=$(lsof -t "$DEVICE" 2>/dev/null | tr '\n' ' ' || true)
+  if [ -n "${HOLDERS// }" ]; then
+    echo "[!] Processes using $DEVICE:"
+    lsof "$DEVICE"
+    printf "Kill them? [y/N]: "
+    read -r kill_choice
+    case "$kill_choice" in
+      [Yy]*) kill $HOLDERS ;;
+      *) echo "[i] Leaving processes running." ;;
+    esac
+  fi
+fi
+
+# Connect
+case "$TOOL" in
+  picocom)
+    if ! command -v picocom >/dev/null 2>&1; then
+      echo "[!] picocom not found. Install with: brew install picocom"
+      exit 1
+    fi
+    exec picocom -b "$BAUD" --flow n --parity n --databits 8 --stopbits 1 "$DEVICE"
+    ;;
+  screen|*)
+    if ! command -v screen >/dev/null 2>&1; then
+      echo "[!] screen not found. Install with: brew install screen"
+      exit 1
+    fi
+    # If /dev/tty.* is busy, try to auto-switch to matching /dev/cu.*
+    if [[ "$DEVICE" == /dev/tty.* ]]; then
+      CU_CAND="/dev/cu.${DEVICE#/dev/tty.}"
+      if [ -e "$CU_CAND" ]; then
+        echo "[i] Hint: prefer $CU_CAND on macOS for outbound serial."
+      fi
+    fi
+    exec screen "$DEVICE" "$BAUD"
+    ;;
+esac
+  DEVICE="${DEVICES[$idx]}"
+else
+  DEVICE="${DEVICES[0]}"
+fi
+
+echo "[*] Using device: $DEVICE"
+echo "[*] Baud rate:    $BAUD"
+echo "[*] Tool:         $TOOL"
+
+# Show holders and offer to kill them
+if command
+# Connect
+case "$TOOL" in
+  picocom)
+    if ! command -v picocom >/dev/null 2>&1; then
+      echo "[!] picocom not found. Install with: brew install picocom"
+      exit 1
+    fi
+    exec picocom -b "$BAUD" --flow n --parity n --databits 8 --stopbits 1 "$DEVICE"
+    ;;
+  screen|*)
+    if ! command -v screen >/dev/null 2>&1; then
+      echo "[!] screen not found. Install with: brew install screen"
+      exit 1
+    fi
+    # If /dev/tty.* is busy, try to auto-switch to matching /dev/cu.*
+    if [[ "$DEVICE" == /dev/tty.* ]]; then
+      CU_CAND="/dev/cu.${DEVICE#/dev/tty.}"
+      if [ -e "$CU_CAND" ]; then
+        echo "[i] Hint: prefer $CU_CAND on macOS for outbound serial."
+      fi
+    fi
+    exec screen "$DEVICE" "$BAUD"
+    ;;
+esac
