@@ -34,6 +34,12 @@ A simple Bash script to open github repos on github.com projects using aliases.
    ```
    Opens the project associated with the given alias on github.com.
 
+5. **Open a project from current directory**:
+   ```bash
+   web-git .
+   ```
+   If ran with . it will open the current git project in the current directory.
+
 ## Setup
 
 1. Place the `web-git` script in a directory included in your `PATH`.
