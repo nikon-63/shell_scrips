@@ -15,6 +15,7 @@ A collection of Bash scripts and utilities for network, system, and developer pr
 | Shell-VS       | `vs`               | Manage and open VS Code projects using aliases and autocomplete. |
 | SSS            | `sss`              | Manage and connect to SSH servers using aliases and interactive selection. |
 | WEB-GIT        | `web-git`          | Open GitHub repos in your browser using project aliases. Reads URLs from `.git/config`. |
+| COPYCODE       | `copyCode`         | Concatenate all code files in a directory (respects .gitignore) into a single file for sharing or review. |
 
 ---
 
@@ -54,9 +55,15 @@ Each tool has its own README in its folder. Most scripts are Bash and require mi
 - Manage and open VS Code projects by alias.
 - Usage: `vs --install`, `vs <project_alias>`
 
+
 ### SSS
 - Manage SSH server aliases and connect interactively.
 - Usage: `sss --install`, `sss --add`, `sss <alias>`
+
+### COPYCODE
+- Concatenate all code files in a directory (respects .gitignore) into a single file.
+- Usage: `copyCode <source_dir> <output_file>`
+- Example: `copyCode . out.txt`
 
 ### WEB-GIT
 - Open GitHub repos in your browser using aliases.
