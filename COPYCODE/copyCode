@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "Usage: copyCode <source_dir> <output_file>" >&2
+  exit 1
+}
+
+if [ $# -ne 2 ]; then
+  usage
+fi
+
+SOURCE_DIR="$1"
+DEST_FILE="$2"
+
+if [ ! -d "$SOURCE_DIR" ]; then
+  echo "Error: source_dir is not a directory: $SOURCE_DIR" >&2
+  exit 1
+fi
+
+if ! command -v git >/dev/null 2>&1; then
+  echo "Error: git is required so .gitignore rules can be applied." >&2
+  exit 1
+fi
+
+abs_existing() {
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$1"
+  else
+    python3 - <<'PY' "$1"
+import os,sys
+print(os.path.realpath(sys.argv[1]))
+PY
+  fi
+}
+
+abs_maybe_missing_file() {
+  local p="$1"
+  local dir base
+  dir="$(dirname -- "$p")"
+  base="$(basename -- "$p")"
+  dir="$(abs_existing "$dir")"
+  printf '%s/%s\n' "$dir" "$base"
+}
+
+SOURCE_ABS="$(abs_existing "$SOURCE_DIR")"
+DEST_ABS="$(abs_maybe_missing_file "$DEST_FILE")"
+
+: > "$DEST_FILE"
+
+if ! git -C "$SOURCE_ABS" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Error: '$SOURCE_DIR' is not inside a git repository. Can't apply .gitignore." >&2
+    exit 1
+fi
+
+REPO_ROOT="$(git -C "$SOURCE_ABS" rev-parse --show-toplevel)"
+REPO_ROOT_ABS="$(abs_existing "$REPO_ROOT")"
+
+SOURCE_REL="$(python3 - <<'PY' "$SOURCE_ABS" "$REPO_ROOT_ABS"
+import os,sys
+src=os.path.realpath(sys.argv[1])
+root=os.path.realpath(sys.argv[2])
+print(os.path.relpath(src, root))
+PY
+)"
+
+DEST_REL=""
+case "$DEST_ABS" in
+  "$REPO_ROOT_ABS"/*)
+    DEST_REL="$(python3 - <<'PY' "$DEST_ABS" "$REPO_ROOT_ABS"
+import os,sys
+dest=os.path.realpath(sys.argv[1])
+root=os.path.realpath(sys.argv[2])
+print(os.path.relpath(dest, root))
+PY
+)"
+    ;;
+esac
+
+PATHSPEC="$SOURCE_REL"
+if [ "$PATHSPEC" = "." ]; then
+  PATHSPEC="."
+fi
+
+git -C "$REPO_ROOT_ABS" -c core.quotepath=false ls-files -z --cached --others --exclude-standard -- "$PATHSPEC" \
+| while IFS= read -r -d '' relpath; do
+    if [ -n "$DEST_REL" ] && [ "$relpath" = "$DEST_REL" ]; then
+      continue
+    fi
+
+    fullpath="$REPO_ROOT_ABS/$relpath"
+    [ -f "$fullpath" ] || continue
+
+    filename="$(basename "$fullpath")"
+
+    {
+      echo "File Name: $filename"
+      echo "File Path: $fullpath"
+      cat "$fullpath"
+      echo
+      echo "------------------------------------------"
+    } >> "$DEST_FILE"
+  done
+
+echo "Copied to '$DEST_FILE'"
