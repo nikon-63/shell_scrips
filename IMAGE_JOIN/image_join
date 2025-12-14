@@ -1,0 +1,98 @@
+#!/bin/bash
+set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+    Usage:
+    image_join -h <image1> <image2>   Join horizontally (side-by-side), match height
+    image_join -v <image1> <image2>   Join vertically (stacked), match width
+
+    Output:
+    ./JoinedImages/<name1>_<name2>_side.png   (for -h)
+    ./JoinedImages/<name1>_<name2>.png        (for -v)
+EOF
+}
+
+if [ $# -lt 1 ]; then
+    usage
+    exit 1
+fi
+
+MODE="${1:-}"
+shift || true
+
+if [[ "$MODE" != "-h" && "$MODE" != "-v" ]]; then
+    echo "Error: first argument must be -h or -v"
+    usage
+    exit 1
+fi
+
+if [ $# -ne 2 ]; then
+    echo "Error: expected 2 image paths"
+    usage
+    exit 1
+fi
+
+IMG1="$1"
+IMG2="$2"
+
+
+if ! command -v magick >/dev/null 2>&1; then
+    echo "Error: ImageMagick 'magick' not found in PATH."
+    exit 1
+fi
+
+if [ ! -f "$IMG1" ]; then
+    echo "Error: file not found: $IMG1"
+    exit 1
+fi
+
+if [ ! -f "$IMG2" ]; then
+    echo "Error: file not found: $IMG2"
+    exit 1
+fi
+
+strip_ext() {
+    local b
+    b="$(basename -- "$1")"
+    printf '%s' "${b%.*}"
+}
+
+IMG1_NAME="$(strip_ext "$IMG1")"
+IMG2_NAME="$(strip_ext "$IMG2")"
+
+OUTPUT_DIR="./JoinedImages"
+mkdir -p "$OUTPUT_DIR"
+
+if [ "$MODE" = "-h" ]; then
+    OUTPUT_FILE="${OUTPUT_DIR}/${IMG1_NAME}_${IMG2_NAME}_side.png"
+
+    H1="$(magick identify -format "%h" "$IMG1")"
+    H2="$(magick identify -format "%h" "$IMG2")"
+    TARGET_HEIGHT="$H1"
+    if [ "$H2" -gt "$H1" ]; then
+        TARGET_HEIGHT="$H2"
+    fi
+
+    magick \
+        \( "$IMG1" -resize "x${TARGET_HEIGHT}" \) \
+        \( "$IMG2" -resize "x${TARGET_HEIGHT}" \) \
+        +append "$OUTPUT_FILE"
+
+    else
+    OUTPUT_FILE="${OUTPUT_DIR}/${IMG1_NAME}_${IMG2_NAME}.png"
+
+    W1="$(magick identify -format "%w" "$IMG1")"
+    W2="$(magick identify -format "%w" "$IMG2")"
+    TARGET_WIDTH="$W1"
+    if [ "$W2" -gt "$W1" ]; then
+        TARGET_WIDTH="$W2"
+    fi
+
+    magick \
+        \( "$IMG1" -resize "${TARGET_WIDTH}" \) \
+        \( "$IMG2" -resize "${TARGET_WIDTH}" \) \
+        -append "$OUTPUT_FILE"
+fi
+
+echo "Saved: $OUTPUT_FILE"
