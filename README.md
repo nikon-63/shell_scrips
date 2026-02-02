@@ -6,6 +6,7 @@ A collection of Bash scripts and utilities for network, system, and developer pr
 
 | Folder         | Script/Tool         | Description |
 |----------------|--------------------|-------------|
+| AWS/SG-Updater | `sg-ip-updater.sh` | Automatically update AWS Security Group inbound rules with your current public IP. |
 | CONNECT_CONSOLE| `connect_console`  | Quickly connect to Cisco/network devices via serial console on macOS. Auto-detects USB serial adapters and supports `screen`/`picocom`. |
 | GD             | `gd`               | Opens the current Git repository in GitHub Desktop from the terminal. |
 | IMAGE_JOIN     | `image_join`       | Joins two images (side-by-side or stacked) using ImageMagick. Output is saved as PNG. |
@@ -22,6 +23,11 @@ A collection of Bash scripts and utilities for network, system, and developer pr
 ## Quick Start
 
 Each tool has its own README in its folder. Most scripts are Bash and require minimal dependencies. See below for a summary of each tool:
+
+### AWS/SG-Updater
+- Automatically update AWS SG rules with your current public IP.
+- Usage: `./sg-ip-updater.sh --install`
+- Requires: `aws-cli`, `curl`.
 
 ### CONNECT_CONSOLE
 - Connect to Cisco/network devices via serial console on macOS.
