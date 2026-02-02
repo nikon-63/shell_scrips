@@ -51,12 +51,46 @@ get_public_ip() {
   echo "$ip"
 }
 
+aws_cli_major() {
+  local v
+  v="$(aws --version 2>&1 || true)"
+  if [[ "$v" =~ aws-cli/2\. ]]; then
+    echo "2"
+  else
+    echo "1"
+  fi
+}
+
+invoke_lambda() {
+  local ip="$1"
+  local payload out_file major
+
+  payload="{\"ip\":\"${ip}\"}"
+  out_file="$(mktemp -t sg-updater-lambda.XXXXXX.json)"
+  major="$(aws_cli_major)"
+
+  if [[ "$major" == "2" ]]; then
+    aws lambda invoke \
+      --function-name "$LAMBDA_FUNCTION_NAME" \
+      --cli-binary-format raw-in-base64-out \
+      --payload "$payload" \
+      "$out_file" >/dev/null
+  else
+    # AWS CLI v1: no --cli-binary-format; raw JSON payload works directly
+    aws lambda invoke \
+      --function-name "$LAMBDA_FUNCTION_NAME" \
+      --payload "$payload" \
+      "$out_file" >/dev/null
+  fi
+
+  rm -f "$out_file"
+}
+
 install_cron() {
   ensure_commands
   load_env
 
   mkdir -p "$(dirname "$STATE_FILE")"
-
   chmod 600 "$ENV_FILE" || true
   touch "$LOG_FILE"
   chmod 600 "$LOG_FILE" || true
@@ -79,17 +113,6 @@ uninstall_cron() {
     | grep -v "sg-ip-updater (managed)" \
     | crontab -
   echo "Removed cron job."
-}
-
-invoke_lambda() {
-  local ip="$1"
-
-  # AWS CLI v2 requires this for raw JSON payloads
-  aws lambda invoke \
-    --function-name "$LAMBDA_FUNCTION_NAME" \
-    --cli-binary-format raw-in-base64-out \
-    --payload "{\"ip\":\"${ip}\"}" \
-    /dev/null >/dev/null
 }
 
 run_once() {
@@ -121,21 +144,9 @@ run_once() {
 }
 
 case "${1:-}" in
-  --install)
-    install_cron
-    ;;
-  --uninstall)
-    uninstall_cron
-    ;;
-  -h|--help)
-    usage
-    ;;
-  "")
-    run_once
-    ;;
-  *)
-    echo "[ERROR] Unknown argument: $1" >&2
-    usage
-    exit 1
-    ;;
+  --install)   install_cron ;;
+  --uninstall) uninstall_cron ;;
+  -h|--help)   usage ;;
+  "")          run_once ;;
+  *)           echo "[ERROR] Unknown argument: $1" >&2; usage; exit 1 ;;
 esac
