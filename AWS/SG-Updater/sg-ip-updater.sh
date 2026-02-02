@@ -130,7 +130,6 @@ run_once() {
   fi
 
   if [[ -n "$last_ip" && "$last_ip" == "$current_ip" ]]; then
-    echo "No change: $current_ip"
     exit 0
   fi
 
